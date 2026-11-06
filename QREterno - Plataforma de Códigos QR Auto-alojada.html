@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QREterno - Plataforma Propia de Códigos QR Dinámicos & MP3</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Styling Library -->
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 12s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Glassmorphism & Custom Scrollbars */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Smartphone Frame */
+        .phone-mockup {
+            width: 320px;
+            height: 620px;
+            border: 12px solid #0f172a;
+            border-radius: 44px;
+            position: relative;
+            overflow: hidden;
+            background: #f8fafc;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(255,255,255,0.1) inset;
+        }
+        .phone-notch {
+            width: 120px;
+            height: 20px;
+            background: #0f172a;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
+            z-index: 30;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .phone-speaker {
+            width: 40px;
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+        }
+        .phone-camera {
+            width: 8px;
+            height: 8px;
+            background: #1e293b;
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+
+        .step-active {
+            border-color: #2563eb;
+            color: #1d4ed8;
+            background-color: #eff6ff;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1);
+        }
+        .step-inactive {
+            border-color: #e2e8f0;
+            color: #64748b;
+            background-color: #ffffff;
+        }
+        .step-inactive:hover {
+            border-color: #cbd5e1;
+            color: #334155;
+        }
+
+        /* Range Sliders */
+        input[type=range] {
+            accent-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Toast Notification Overlay -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-3 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message" class="text-sm font-medium">Notificación</span>
+    </div>
+
+    <!-- Header Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-blue-700 to-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-500/20">
+                    <i class="fa-solid fa-qrcode text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                        QREterno <span class="bg-blue-100 text-blue-700 text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full">v2.5 Pro</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium">Plataforma Auto-alojada & Creador de QR Multimedia</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                <button onclick="switchTab('wizard')" id="tab-wizard" class="px-4 py-2 rounded-lg transition-all flex items-center space-x-2 bg-white text-blue-600 shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Generador QR</span>
+                </button>
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-4 py-2 rounded-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Panel Dinámico</span>
+                </button>
+                <button onclick="switchTab('export')" id="tab-export" class="px-4 py-2 rounded-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-server"></i>
+                    <span>Código Servidor</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        
+        <!-- SECTION 1: WIZARD -->
+        <div id="section-wizard" class="space-y-6">
+            
+            <!-- Wizard Stepper Header -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="goToStep(1)" id="step-btn-1" class="step-active border-2 rounded-2xl p-4 flex items-center space-x-4 transition">
+                    <span id="step-badge-1" class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">1</span>
+                    <div class="text-left">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paso 1</p>
+                        <p class="font-bold text-sm text-slate-800">Contenido / Multimedia</p>
+                    </div>
+                </button>
+                <button onclick="goToStep(2)" id="step-btn-2" class="step-inactive border-2 rounded-2xl p-4 flex items-center space-x-4 transition">
+                    <span id="step-badge-2" class="w-9 h-9 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm">2</span>
+                    <div class="text-left">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paso 2</p>
+                        <p class="font-bold text-sm text-slate-800">Diseño y Estilo QR</p>
+                    </div>
+                </button>
+                <button onclick="goToStep(3)" id="step-btn-3" class="step-inactive border-2 rounded-2xl p-4 flex items-center space-x-4 transition">
+                    <span id="step-badge-3" class="w-9 h-9 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm">3</span>
+                    <div class="text-left">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paso 3</p>
+                        <p class="font-bold text-sm text-slate-800">Exportar y Descargar</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Workspace Layout Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Left Form Panel (7 cols) -->
+                <div class="lg:col-span-7 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
+                    
+                    <!-- STEP 1: CONTENT TYPE & INPUTS -->
+                    <div id="step-content-1" class="space-y-6">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">1. Selecciona el Tipo de Contenido</h2>
+                            <p class="text-xs text-slate-500">Elige qué tipo de información o landing page abrirá tu código QR.</p>
+                        </div>
+
+                        <!-- Type Selector Grid -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <button onclick="selectType('music')" id="type-music" class="type-btn p-3.5 border-2 border-blue-600 bg-blue-50/60 text-blue-700 rounded-2xl text-center space-y-1.5 transition hover:shadow-sm">
+                                <i class="fa-solid fa-circle-play text-2xl block text-blue-600"></i>
+                                <span class="text-xs font-bold block">Música / MP3 Local</span>
+                            </button>
+                            <button onclick="selectType('url')" id="type-url" class="type-btn p-3.5 border border-slate-200 text-slate-600 rounded-2xl text-center space-y-1.5 transition hover:border-slate-300 hover:bg-slate-50">
+                                <i class="fa-solid fa-link text-2xl block text-slate-500"></i>
+                                <span class="text-xs font-bold block">Sitio Web / URL</span>
+                            </button>
+                            <button onclick="selectType('vcard')" id="type-vcard" class="type-btn p-3.5 border border-slate-200 text-slate-600 rounded-2xl text-center space-y-1.5 transition hover:border-slate-300 hover:bg-slate-50">
+                                <i class="fa-solid fa-address-card text-2xl block text-slate-500"></i>
+                                <span class="text-xs font-bold block">vCard / Contacto</span>
+                            </button>
+                            <button onclick="selectType('video')" id="type-video" class="type-btn p-3.5 border border-slate-200 text-slate-600 rounded-2xl text-center space-y-1.5 transition hover:border-slate-300 hover:bg-slate-50">
+                                <i class="fa-solid fa-film text-2xl block text-slate-500"></i>
+                                <span class="text-xs font-bold block">Video Landing</span>
+                            </button>
+                            <button onclick="selectType('whatsapp')" id="type-whatsapp" class="type-btn p-3.5 border border-slate-200 text-slate-600 rounded-2xl text-center space-y-1.5 transition hover:border-slate-300 hover:bg-slate-50">
+                                <i class="fa-brands fa-whatsapp text-2xl block text-slate-500"></i>
+                                <span class="text-xs font-bold block">WhatsApp Directo</span>
+                            </button>
+                            <button onclick="selectType('wifi')" id="type-wifi" class="type-btn p-3.5 border border-slate-200 text-slate-600 rounded-2xl text-center space-y-1.5 transition hover:border-slate-300 hover:bg-slate-50">
+                                <i class="fa-solid fa-wifi text-2xl block text-slate-500"></i>
+                                <span class="text-xs font-bold block">Red Wi-Fi</span>
+                            </button>
+                        </div>
+
+                        <!-- Dynamic Forms Wrapper -->
+                        <div class="border-t border-slate-100 pt-5 space-y-4">
+                            
+                            <!-- 1. Music / MP3 Upload Form -->
+                            <div id="form-music" class="form-type-panel space-y-4">
+                                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 p-4 rounded-2xl space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <label class="block text-xs font-bold uppercase text-blue-900 tracking-wider">Cargar Archivos Multimedia Locales</label>
+                                        <span class="text-[10px] bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded-full">Procesamiento local en vivo</span>
+                                    </div>
+                                    
+                                    <!-- MP3 Audio File Input -->
+                                    <div class="flex items-center space-x-3">
+                                        <label class="flex-1 cursor-pointer bg-white border border-blue-300 hover:border-blue-500 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 shadow-sm transition">
+                                            <i class="fa-solid fa-cloud-arrow-up text-blue-600 text-base"></i>
+                                            <span id="file-name-display">Seleccionar archivo MP3 de tu dispositivo...</span>
+                                            <input type="file" id="music-file-input" accept="audio/*" class="hidden">
+                                        </label>
+                                    </div>
+
+                                    <!-- Cover Image Upload Input -->
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-blue-200/60">
+                                        <label class="cursor-pointer bg-white border border-slate-300 hover:border-blue-500 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm transition">
+                                            <i class="fa-solid fa-image text-indigo-600 text-sm"></i>
+                                            <span id="cover-file-display">Subir Portada / Carátula de Galería...</span>
+                                            <input type="file" id="music-cover-input" accept="image/*" class="hidden">
+                                        </label>
+                                        <button onclick="removeCoverImage()" id="btn-remove-cover" class="hidden text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1 transition flex items-center space-x-1">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                            <span>Quitar Portada</span>
+                                        </button>
+                                    </div>
+
+                                    <p class="text-[11px] text-blue-700 leading-relaxed">
+                                        <i class="fa-solid fa-circle-info mr-1"></i>El audio MP3 y la imagen de portada seleccionados se mostrarán en vivo en el simulador móvil.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Título de la Canción</label>
+                                        <input type="text" id="music-title" value="Ecos del Universo" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Artista / Autor</label>
+                                        <input type="text" id="music-artist" value="Sintetizador Estelar" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Álbum / Subtítulo</label>
+                                        <input type="text" id="music-album" value="Edición Especial 2026" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Color del Reproductor</label>
+                                        <select id="music-theme" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                            <option value="gradient-blue">Azul Neón / Gradiente</option>
+                                            <option value="dark">Modo Oscuro Elegante</option>
+                                            <option value="emerald">Esmeralda Audaz</option>
+                                            <option value="sunset">Atardecer Violeta</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Web URL Form -->
+                            <div id="form-url" class="form-type-panel space-y-4 hidden">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Dirección Web de Destino (URL)</label>
+                                    <input type="url" id="input-url" value="https://mi-empresa.com/promocion" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Título de la Landing</label>
+                                    <input type="text" id="url-title" value="Visita Nuestra Tienda Oficial" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- 3. vCard Form -->
+                            <div id="form-vcard" class="form-type-panel space-y-3 hidden">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nombre Completo</label>
+                                        <input type="text" id="vcard-fn" value="Carlos Mendoza" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Organización / Empresa</label>
+                                        <input type="text" id="vcard-org" value="QREterno Studios" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Cargo / Puesto</label>
+                                        <input type="text" id="vcard-role" value="Director de Innovación" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Teléfono</label>
+                                        <input type="tel" id="vcard-tel" value="+593 99 123 4567" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Correo Electrónico</label>
+                                        <input type="email" id="vcard-email" value="carlos@qreterno.com" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. Video Form -->
+                            <div id="form-video" class="form-type-panel space-y-3 hidden">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Título del Video</label>
+                                    <input type="text" id="video-title" value="Presentación de Producto 2026" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">URL de Video (YouTube / Vimeo / MP4 Directo)</label>
+                                    <input type="url" id="video-url" value="https://www.youtube.com/watch?v=dQw4w9WgXcQ" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Descripción Breve</label>
+                                    <textarea id="video-desc" rows="2" class="w-full px-3.5 py-2 border rounded-xl text-sm">Descubre las nuevas características dinámicas que hemos preparado para este trimestre.</textarea>
+                                </div>
+                            </div>
+
+                            <!-- 5. WhatsApp Form -->
+                            <div id="form-whatsapp" class="form-type-panel space-y-3 hidden">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Número de WhatsApp (con código de país)</label>
+                                    <input type="tel" id="wa-num" value="593991234567" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Mensaje Predeterminado</label>
+                                    <textarea id="wa-msg" rows="2" class="w-full px-3.5 py-2 border rounded-xl text-sm">¡Hola! Quisiera obtener más información sobre sus servicios de QR dinámicos.</textarea>
+                                </div>
+                            </div>
+
+                            <!-- 6. Wi-Fi Form -->
+                            <div id="form-wifi" class="form-type-panel space-y-3 hidden">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nombre de Red (SSID)</label>
+                                        <input type="text" id="wifi-ssid" value="QREterno_WiFi_5G" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Contraseña</label>
+                                        <input type="text" id="wifi-pass" value="SeguridadEterna2026" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Tipo de Encriptación</label>
+                                        <select id="wifi-type" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+                                            <option value="WPA">WPA/WPA2/WPA3 (Estándar)</option>
+                                            <option value="WEP">WEP (Antiguo)</option>
+                                            <option value="nopass">Red Abierta (Sin contraseña)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Footer Actions Step 1 -->
+                        <div class="flex justify-end pt-4 border-t border-slate-100">
+                            <button onclick="goToStep(2)" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md shadow-blue-500/20 transition flex items-center space-x-2">
+                                <span>Siguiente: Personalizar Diseño</span>
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: QR CUSTOMIZATION -->
+                    <div id="step-content-2" class="space-y-6 hidden">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">2. Personalización del Código QR</h2>
+                            <p class="text-xs text-slate-500">Adapta los colores, patrones de puntos y agrega tu logo personal.</p>
+                        </div>
+
+                        <div class="space-y-5">
+                            
+                            <!-- Colors Section -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Color de Puntos (Módulos)</label>
+                                    <div class="flex items-center space-x-3">
+                                        <input type="color" id="qr-color-dots" value="#1e3a8a" class="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 p-0.5 bg-white">
+                                        <span id="qr-color-dots-val" class="font-mono text-xs uppercase text-slate-600 font-bold">#1e3a8a</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Color de Fondo</label>
+                                    <div class="flex items-center space-x-3">
+                                        <input type="color" id="qr-color-bg" value="#ffffff" class="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 p-0.5 bg-white">
+                                        <span id="qr-color-bg-val" class="font-mono text-xs uppercase text-slate-600 font-bold">#ffffff</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Shapes & Pattern Style -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Estilo de Puntos Internos</label>
+                                    <select id="qr-style-dots" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                        <option value="square">Cuadrados Clásicos</option>
+                                        <option value="dots" selected>Puntos Redondos</option>
+                                        <option value="rounded">Bordes Suaves (Rounded)</option>
+                                        <option value="extra-rounded">Extra Redondeado</option>
+                                        <option value="classy">Elegante (Classy)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Estilo de los Ojos (Esquinas)</label>
+                                    <select id="qr-style-eyes" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                        <option value="square">Cuadrado Estándar</option>
+                                        <option value="dot">Ojo Circulo Redondo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Logo Center Upload -->
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-3">
+                                <label class="block text-xs font-bold uppercase text-slate-700">Logo Central (Opcional)</label>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <label class="cursor-pointer bg-white border border-slate-300 hover:border-blue-500 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
+                                        <i class="fa-solid fa-image text-blue-600 mr-1.5"></i>Subir Logo...
+                                        <input type="file" id="qr-logo-input" accept="image/*" class="hidden">
+                                    </label>
+                                    <button onclick="removeLogo()" id="btn-remove-logo" class="hidden text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1">
+                                        <i class="fa-solid fa-trash mr-1"></i> Quitar Logo
+                                    </button>
+                                    <span id="logo-status" class="text-xs text-slate-400">Sin logo central</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Footer Actions Step 2 -->
+                        <div class="flex justify-between pt-4 border-t border-slate-100">
+                            <button onclick="goToStep(1)" class="px-6 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-sm transition flex items-center space-x-2">
+                                <i class="fa-solid fa-arrow-left text-xs"></i>
+                                <span>Anterior</span>
+                            </button>
+                            <button onclick="goToStep(3)" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md shadow-blue-500/20 transition flex items-center space-x-2">
+                                <span>Siguiente: Vista Previa & Descarga</span>
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: EXPORT & DOWNLOAD -->
+                    <div id="step-content-3" class="space-y-6 hidden">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">3. Tu Código QR Listo para Impresión</h2>
+                            <p class="text-xs text-slate-500">Descarga tu QR en alta resolución sin marcas de agua ni caducidad.</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center space-y-4 flex flex-col items-center justify-center">
+                            <div id="qr-final-preview" class="p-4 bg-white rounded-2xl shadow-md border border-slate-200 inline-block"></div>
+                            <span class="text-xs font-semibold text-slate-500">Código QR Generado Dinámicamente</span>
+                        </div>
+
+                        <!-- Export Options Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button onclick="downloadQR('png')" class="py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/20 transition flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-download text-base"></i>
+                                <span>Descargar Imagen PNG (HD)</span>
+                            </button>
+                            <button onclick="downloadQR('svg')" class="py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md shadow-emerald-500/20 transition flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-vector-square text-base"></i>
+                                <span>Descargar Vector SVG (Impresión)</span>
+                            </button>
+                        </div>
+
+                        <!-- Dynamic Registration Button -->
+                        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-200/60 flex items-center justify-between">
+                            <div class="space-y-0.5">
+                                <p class="text-xs font-bold text-blue-900">¿Guardar en el Panel Dinámico?</p>
+                                <p class="text-[11px] text-blue-700">Podrás cambiar la URL de destino más adelante sin volver a imprimir el QR.</p>
+                            </div>
+                            <button onclick="saveCurrentQRToDashboard()" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-bookmark mr-1"></i> Guardar
+                            </button>
+                        </div>
+
+                        <!-- Footer Actions Step 3 -->
+                        <div class="flex justify-start pt-4 border-t border-slate-100">
+                            <button onclick="goToStep(2)" class="px-6 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-sm transition flex items-center space-x-2">
+                                <i class="fa-solid fa-arrow-left text-xs"></i>
+                                <span>Modificar Diseño</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Smartphone Mockup Simulator (5 cols) -->
+                <div class="lg:col-span-5 flex flex-col items-center justify-center sticky top-24">
+                    <div class="flex items-center space-x-2 mb-3">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Simulador Móvil en Vivo</span>
+                    </div>
+
+                    <!-- Smartphone Frame -->
+                    <div class="phone-mockup">
+                        <!-- Top Notch Structure -->
+                        <div class="phone-notch">
+                            <div class="phone-speaker"></div>
+                            <div class="phone-camera"></div>
+                        </div>
+
+                        <!-- Smartphone Interactive Display Screen -->
+                        <div id="phone-screen" class="w-full h-full pt-8 pb-4 px-4 overflow-y-auto custom-scrollbar flex flex-col">
+                            <!-- Live JS Mockup Content rendered here -->
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-3 text-center">Así interactuarán tus usuarios al escanear el código QR impreso.</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SECTION 2: DASHBOARD -->
+        <div id="section-dashboard" class="space-y-6 hidden">
+            <div class="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Gestor de Enlaces y Códigos Dinámicos</h2>
+                        <p class="text-xs text-slate-500">Modifica el contenido de destino en tiempo real. Los códigos QR ya impresos redirigirán instantáneamente al nuevo enlace.</p>
+                    </div>
+                    <button onclick="switchTab('wizard')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition flex items-center space-x-1.5 shadow-md shadow-blue-500/20">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Crear Nuevo QR</span>
+                    </button>
+                </div>
+
+                <!-- Dashboard Summary Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
+                        <p class="text-[11px] font-bold uppercase text-slate-400">Total QR Creados</p>
+                        <p id="stat-total-qrs" class="text-2xl font-black text-slate-800 mt-1">3</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
+                        <p class="text-[11px] font-bold uppercase text-slate-400">Total Escaneos Registrados</p>
+                        <p id="stat-total-scans" class="text-2xl font-black text-blue-600 mt-1">142</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
+                        <p class="text-[11px] font-bold uppercase text-slate-400">Estado del Host</p>
+                        <p class="text-xs font-bold text-emerald-600 mt-2 flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span> Servidor Propio Activo
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Dynamic QR Management Table -->
+                <div class="overflow-x-auto border border-slate-200/80 rounded-2xl">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase font-bold text-slate-500">
+                            <tr>
+                                <th class="p-4">ID Código</th>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Título / Etiqueta</th>
+                                <th class="p-4">Destino Actual</th>
+                                <th class="p-4 text-center">Escaneos</th>
+                                <th class="p-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-table-body" class="divide-y divide-slate-100 font-medium">
+                            <!-- Dynamic Content Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: SERVER EXPORT (PHP/MYSQL) -->
+        <div id="section-export" class="space-y-6 hidden">
+            <div class="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase rounded-full">Código Abierto</span>
+                        <h2 class="text-lg font-bold text-slate-900">Backend PHP & MySQL para tu Hosting Propio</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Implementa esta arquitectura en cPanel, Apache o Nginx para tener total independencia sin suscripciones mensuales.</p>
+                </div>
+
+                <!-- Script Tabs -->
+                <div class="space-y-4">
+                    <!-- File 1: r.php Redirector -->
+                    <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
+                        <div class="bg-slate-800 px-4 py-3 flex justify-between items-center border-b border-slate-700">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-brands fa-php text-indigo-400 text-lg"></i>
+                                <span class="text-xs font-mono font-bold text-slate-200">r.php (Redireccionador Dinámico Ligero)</span>
+                            </div>
+                            <button onclick="copyCode('code-r-php')" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-copy mr-1"></i> Copiar Código
+                            </button>
+                        </div>
+                        <pre class="p-4 text-xs font-mono text-emerald-400 overflow-x-auto leading-relaxed" id="code-r-php">
+&lt;?php
+// Script de Redirección Ultra-Rápido sin Expiración (r.php)
+// Conexión a Base de Datos Propia
+$db_host = "localhost";
+$db_user = "tu_usuario";
+$db_pass = "tu_password";
+$db_name = "qreterno_db";
+
+$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+if ($conn-&gt;connect_error) {
+    die("Error de Conexión: " . $conn-&gt;connect_error);
+}
+
+// Obtener parámetro de ID único del QR
+$code_id = isset($_GET['c']) ? $conn-&gt;real_escape_string($_GET['c']) : '';
+
+if (!empty($code_id)) {
+    // 1. Incrementar contador de escaneos
+    $conn-&gt;query("UPDATE qr_codes SET scans = scans + 1 WHERE code_id = '{$code_id}'");
+    
+    // 2. Obtener URL o contenido de destino
+    $result = $conn-&gt;query("SELECT target_url FROM qr_codes WHERE code_id = '{$code_id}' LIMIT 1");
+    if ($row = $result-&gt;fetch_assoc()) {
+        header("Location: " . $row['target_url'], true, 302);
+        exit();
+    }
+}
+
+// Redirección por defecto si el código no existe
+header("Location: https://tudominio.com", true, 302);
+exit();
+?&gt;</pre>
+                    </div>
+
+                    <!-- File 2: Database Schema SQL -->
+                    <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
+                        <div class="bg-slate-800 px-4 py-3 flex justify-between items-center border-b border-slate-700">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-database text-amber-400 text-sm"></i>
+                                <span class="text-xs font-mono font-bold text-slate-200">schema.sql (Estructura MySQL)</span>
+                            </div>
+                            <button onclick="copyCode('code-schema-sql')" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-copy mr-1"></i> Copiar SQL
+                            </button>
+                        </div>
+                        <pre class="p-4 text-xs font-mono text-amber-300 overflow-x-auto leading-relaxed" id="code-schema-sql">
+CREATE TABLE IF NOT EXISTS `qr_codes` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `code_id` VARCHAR(50) NOT NULL UNIQUE,
+  `type` VARCHAR(20) NOT NULL,
+  `title` VARCHAR(150) NOT NULL,
+  `target_url` TEXT NOT NULL,
+  `scans` INT DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-2">
+                    <p class="font-bold text-slate-800"><i class="fa-solid fa-rocket text-blue-600 mr-1.5"></i>Instrucciones de Instalación Rápida:</p>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Crea una base de datos MySQL en tu hosting e importa el archivo <code class="bg-slate-200 px-1 rounded text-slate-800">schema.sql</code>.</li>
+                        <li>Sube el archivo <code class="bg-slate-200 px-1 rounded text-slate-800">r.php</code> a la raíz de tu dominio (ej. <code class="bg-slate-200 px-1 rounded text-slate-800">https://tudominio.com/r.php</code>).</li>
+                        <li>Los códigos QR impresos apuntarán a URLs cortas como <code class="bg-slate-200 px-1 rounded text-slate-800">https://tudominio.com/r.php?c=qr_m102</code>.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JS Application State & Controller -->
+    <script>
+        // Core State Management
+        let currentStep = 1;
+        let selectedType = 'music';
+        let qrCodeStyling = null;
+        let currentAudioObjectUrl = null;
+        let currentCoverObjectUrl = null;
+        let logoObjectUrl = null;
+
+        // Custom Dynamic QRs Store (Simulated DB)
+        let qrDatabase = [
+            { id: 'qr_m102', type: 'music', title: 'Ecos del Universo (Audio MP3)', target: 'audio_ecos_universo.mp3', scans: 142 },
+            { id: 'qr_w205', type: 'url', title: 'Sitio Web Promocional', target: 'https://mi-empresa.com/promocion', scans: 89 },
+            { id: 'qr_v309', type: 'vcard', title: 'Tarjeta Carlos Mendoza', target: 'vcard_carlos.vcf', scans: 34 }
+        ];
+
+        // Player Audio Controls State
+        let audioPlayer = null;
+        let isPlaying = false;
+
+        window.onload = () => {
+            initQR();
+            setupAudioUpload();
+            setupCoverUpload();
+            setupLogoUpload();
+            renderDashboardTable();
+            updatePreview();
+        };
+
+        // Initialize QR Engine
+        function initQR() {
+            qrCodeStyling = new QRCodeStyling({
+                width: 220,
+                height: 220,
+                data: "https://tudominio.com/r.php?c=qr_m102",
+                dotsOptions: { color: "#1e3a8a", type: "dots" },
+                backgroundOptions: { color: "#ffffff" },
+                cornersSquareOptions: { type: "square" },
+                imageOptions: { crossOrigin: "anonymous", margin: 5 }
+            });
+            document.getElementById('qr-final-preview').innerHTML = "";
+            qrCodeStyling.append(document.getElementById('qr-final-preview'));
+        }
+
+        // Setup Local MP3 Audio File Loader
+        function setupAudioUpload() {
+            const musicInput = document.getElementById('music-file-input');
+            musicInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (currentAudioObjectUrl) {
+                        URL.revokeObjectURL(currentAudioObjectUrl);
+                    }
+                    currentAudioObjectUrl = URL.createObjectURL(file);
+                    document.getElementById('file-name-display').innerText = file.name;
+                    
+                    const musicTitleInput = document.getElementById('music-title');
+                    if (musicTitleInput) {
+                        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+                        musicTitleInput.value = cleanName;
+                    }
+                    showToast("Audio MP3 cargado correctamente", "success");
+                    updatePreview();
+                }
+            });
+        }
+
+        // Setup Local Cover Image Loader
+        function setupCoverUpload() {
+            const coverInput = document.getElementById('music-cover-input');
+            coverInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (currentCoverObjectUrl) {
+                        URL.revokeObjectURL(currentCoverObjectUrl);
+                    }
+                    currentCoverObjectUrl = URL.createObjectURL(file);
+                    document.getElementById('cover-file-display').innerText = file.name;
+                    document.getElementById('btn-remove-cover').classList.remove('hidden');
+                    showToast("Portada cargada correctamente", "success");
+                    updatePreview();
+                }
+            });
+        }
+
+        function removeCoverImage() {
+            if (currentCoverObjectUrl) {
+                URL.revokeObjectURL(currentCoverObjectUrl);
+                currentCoverObjectUrl = null;
+            }
+            document.getElementById('music-cover-input').value = "";
+            document.getElementById('cover-file-display').innerText = "Subir Portada / Carátula de Galería...";
+            document.getElementById('btn-remove-cover').classList.add('hidden');
+            showToast("Portada removida", "info");
+            updatePreview();
+        }
+
+        // Setup Logo Upload
+        function setupLogoUpload() {
+            const logoInput = document.getElementById('qr-logo-input');
+            logoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (logoObjectUrl) {
+                        URL.revokeObjectURL(logoObjectUrl);
+                    }
+                    logoObjectUrl = URL.createObjectURL(file);
+                    document.getElementById('logo-status').innerText = file.name;
+                    document.getElementById('btn-remove-logo').classList.remove('hidden');
+                    showToast("Logo adjuntado al código QR", "info");
+                    updatePreview();
+                }
+            });
+        }
+
+        function removeLogo() {
+            if (logoObjectUrl) {
+                URL.revokeObjectURL(logoObjectUrl);
+                logoObjectUrl = null;
+            }
+            document.getElementById('qr-logo-input').value = "";
+            document.getElementById('logo-status').innerText = "Sin logo central";
+            document.getElementById('btn-remove-logo').classList.add('hidden');
+            updatePreview();
+        }
+
+        // Stepper Controller
+        function goToStep(step) {
+            currentStep = step;
+            [1, 2, 3].forEach(i => {
+                document.getElementById(`step-content-${i}`).classList.add('hidden');
+                const btn = document.getElementById(`step-btn-${i}`);
+                const badge = document.getElementById(`step-badge-${i}`);
+                if (i === step) {
+                    btn.className = 'step-active border-2 rounded-2xl p-4 flex items-center space-x-4 transition';
+                    badge.className = 'w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm';
+                } else {
+                    btn.className = 'step-inactive border-2 rounded-2xl p-4 flex items-center space-x-4 transition';
+                    badge.className = 'w-9 h-9 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm';
+                }
+            });
+            document.getElementById(`step-content-${step}`).classList.remove('hidden');
+            updatePreview();
+        }
+
+        // Content Type Selector
+        function selectType(type) {
+            selectedType = type;
+            document.querySelectorAll('.type-btn').forEach(b => {
+                b.className = 'type-btn p-3.5 border border-slate-200 text-slate-600 rounded-2xl text-center space-y-1.5 transition hover:border-slate-300 hover:bg-slate-50';
+                const icon = b.querySelector('i');
+                if (icon) icon.className = icon.className.replace('text-blue-600', 'text-slate-500');
+            });
+            
+            const activeBtn = document.getElementById(`type-${type}`);
+            if (activeBtn) {
+                activeBtn.className = 'type-btn p-3.5 border-2 border-blue-600 bg-blue-50/60 text-blue-700 rounded-2xl text-center space-y-1.5 transition hover:shadow-sm';
+                const icon = activeBtn.querySelector('i');
+                if (icon) icon.className = icon.className.replace('text-slate-500', 'text-blue-600');
+            }
+
+            document.querySelectorAll('.form-type-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`form-${type}`).classList.remove('hidden');
+            updatePreview();
+        }
+
+        // Main Live Preview Renderer
+        function updatePreview() {
+            const screen = document.getElementById('phone-screen');
+            let qrData = "https://tudominio.com/r.php?c=qr_demo";
+
+            if (selectedType === 'music') {
+                const title = document.getElementById('music-title').value || "Título de Audio";
+                const artist = document.getElementById('music-artist').value || "Artista";
+                const album = document.getElementById('music-album').value || "Álbum Especial";
+                const theme = document.getElementById('music-theme').value;
+
+                let themeCss = "bg-gradient-to-b from-blue-600 to-indigo-900 text-white";
+                if (theme === 'dark') themeCss = "bg-slate-900 text-white";
+                if (theme === 'emerald') themeCss = "bg-gradient-to-b from-emerald-600 to-teal-900 text-white";
+                if (theme === 'sunset') themeCss = "bg-gradient-to-b from-purple-700 via-pink-600 to-amber-600 text-white";
+
+                qrData = `https://tudominio.com/r.php?c=qr_m102`;
+
+                screen.innerHTML = `
+                    <div class="h-full flex flex-col justify-between p-2 rounded-2xl ${themeCss}">
+                        <!-- Header Mock -->
+                        <div class="flex justify-between items-center text-xs opacity-80 pt-2 px-1">
+                            <i class="fa-solid fa-chevron-down"></i>
+                            <span class="font-semibold text-[10px] uppercase tracking-wider">Reproductor QREterno</span>
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </div>
+
+                        <!-- Album Art Cover -->
+                        <div class="my-auto text-center space-y-4">
+                            <div class="w-36 h-36 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl mx-auto flex items-center justify-center shadow-2xl relative overflow-hidden group">
+                                ${currentCoverObjectUrl ? `
+                                    <img src="${currentCoverObjectUrl}" alt="Portada" class="w-full h-full object-cover rounded-3xl transition duration-500 group-hover:scale-105">
+                                ` : `
+                                    <i class="fa-solid fa-music text-4xl text-white opacity-80 group-hover:scale-110 transition duration-300"></i>
+                                    <div class="absolute inset-0 bg-blue-500/10 animate-pulse"></div>
+                                `}
+                            </div>
+                            <div>
+                                <h3 class="font-black text-lg tracking-tight leading-snug px-2">${title}</h3>
+                                <p class="text-xs opacity-80 font-medium">${artist}</p>
+                                <p class="text-[10px] opacity-60 mt-0.5">${album}</p>
+                            </div>
+                        </div>
+
+                        <!-- Audio Controls Panel -->
+                        <div class="bg-black/20 backdrop-blur-md p-4 rounded-3xl border border-white/10 space-y-3 mb-2">
+                            ${currentAudioObjectUrl ? `
+                                <audio id="sim-audio-player" src="${currentAudioObjectUrl}" class="hidden"></audio>
+                                
+                                <!-- Progress Bar -->
+                                <div class="space-y-1">
+                                    <input type="range" id="audio-seek" value="0" min="0" max="100" class="w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-[10px] opacity-70 font-mono">
+                                        <span id="audio-time-curr">0:00</span>
+                                        <span id="audio-time-dur">0:00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Control Buttons -->
+                                <div class="flex items-center justify-center space-x-6">
+                                    <button class="opacity-70 hover:opacity-100"><i class="fa-solid fa-backward-step text-sm"></i></button>
+                                    <button onclick="toggleAudioPlay()" id="btn-play-pause" class="w-12 h-12 bg-white text-slate-900 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transform active:scale-95 transition">
+                                        <i class="fa-solid fa-play ml-0.5"></i>
+                                    </button>
+                                    <button class="opacity-70 hover:opacity-100"><i class="fa-solid fa-forward-step text-sm"></i></button>
+                                </div>
+                            ` : `
+                                <div class="text-center py-3 space-y-1">
+                                    <p class="text-xs font-bold text-amber-300"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Sin audio cargado</p>
+                                    <p class="text-[10px] opacity-70">Sube un MP3 en el Paso 1 para reproducirlo aquí</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>`;
+
+                if (currentAudioObjectUrl) {
+                    setTimeout(initAudioEventListeners, 100);
+                }
+
+            } else if (selectedType === 'url') {
+                const url = document.getElementById('input-url').value;
+                const title = document.getElementById('url-title').value;
+                qrData = url;
+
+                screen.innerHTML = `
+                    <div class="h-full flex flex-col justify-between py-4 space-y-4">
+                        <div class="space-y-4 my-auto text-center">
+                            <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-sm">
+                                <i class="fa-solid fa-globe"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <h3 class="font-bold text-slate-800 text-base px-2">${title}</h3>
+                                <p class="text-xs text-slate-400 break-all px-4 font-mono">${url}</p>
+                            </div>
+                            <a href="${url}" target="_blank" class="inline-block px-6 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20">
+                                Visitar Sitio Web <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                            </a>
+                        </div>
+                    </div>`;
+
+            } else if (selectedType === 'vcard') {
+                const fn = document.getElementById('vcard-fn').value;
+                const org = document.getElementById('vcard-org').value;
+                const role = document.getElementById('vcard-role').value;
+                const tel = document.getElementById('vcard-tel').value;
+                const email = document.getElementById('vcard-email').value;
+
+                qrData = `BEGIN:VCARD\nVERSION:3.0\nN:${fn}\nORG:${org}\nTITLE:${role}\nTEL:${tel}\nEMAIL:${email}\nEND:VCARD`;
+
+                screen.innerHTML = `
+                    <div class="h-full flex flex-col justify-between py-2 space-y-3">
+                        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center space-y-3 my-auto">
+                            <div class="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto shadow-md">
+                                ${fn.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">${fn}</h3>
+                                <p class="text-xs text-blue-600 font-semibold">${role}</p>
+                                <p class="text-[11px] text-slate-400">${org}</p>
+                            </div>
+                            <div class="border-t border-slate-100 pt-3 space-y-2 text-left text-xs">
+                                <div class="flex items-center space-x-2 text-slate-600">
+                                    <i class="fa-solid fa-phone text-blue-500 w-4"></i>
+                                    <span>${tel}</span>
+                                </div>
+                                <div class="flex items-center space-x-2 text-slate-600">
+                                    <i class="fa-solid fa-envelope text-blue-500 w-4"></i>
+                                    <span class="truncate">${email}</span>
+                                </div>
+                            </div>
+                            <button class="w-full py-2 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-sm">
+                                Guardar en Contactos
+                            </button>
+                        </div>
+                    </div>`;
+
+            } else if (selectedType === 'video') {
+                const title = document.getElementById('video-title').value;
+                const desc = document.getElementById('video-desc').value;
+                screen.innerHTML = `
+                    <div class="h-full flex flex-col justify-between py-2">
+                        <div class="space-y-3 my-auto">
+                            <div class="w-full h-40 bg-slate-800 rounded-2xl flex items-center justify-center relative overflow-hidden text-white">
+                                <i class="fa-solid fa-play-circle text-4xl text-rose-500 hover:scale-110 transition"></i>
+                            </div>
+                            <div class="text-left space-y-1 px-1">
+                                <h3 class="font-bold text-slate-800 text-sm">${title}</h3>
+                                <p class="text-xs text-slate-500 leading-relaxed">${desc}</p>
+                            </div>
+                        </div>
+                    </div>`;
+            } else if (selectedType === 'whatsapp') {
+                const num = document.getElementById('wa-num').value;
+                const msg = document.getElementById('wa-msg').value;
+                qrData = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+                screen.innerHTML = `
+                    <div class="h-full flex flex-col justify-between py-2">
+                        <div class="space-y-4 my-auto text-center">
+                            <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm">
+                                <i class="fa-brands fa-whatsapp"></i>
+                            </div>
+                            <div class="space-y-1 px-2">
+                                <h3 class="font-bold text-slate-800 text-sm">WhatsApp Directo</h3>
+                                <p class="text-xs text-slate-500">+${num}</p>
+                                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-[11px] text-emerald-800 text-left mt-2">
+                                    "${msg}"
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            } else if (selectedType === 'wifi') {
+                const ssid = document.getElementById('wifi-ssid').value;
+                const pass = document.getElementById('wifi-pass').value;
+                const type = document.getElementById('wifi-type').value;
+                qrData = `WIFI:S:${ssid};T:${type};P:${pass};;`;
+                screen.innerHTML = `
+                    <div class="h-full flex flex-col justify-between py-2">
+                        <div class="space-y-4 my-auto text-center">
+                            <div class="w-20 h-20 bg-amber-100 text-amber-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-sm">
+                                <i class="fa-solid fa-wifi"></i>
+                            </div>
+                            <div class="space-y-2 px-2 text-left bg-white p-4 rounded-2xl border border-slate-200">
+                                <h3 class="font-bold text-slate-800 text-sm text-center">Conectar a Wi-Fi</h3>
+                                <div class="text-xs space-y-1">
+                                    <p class="text-slate-400">Red (SSID): <span class="font-bold text-slate-800">${ssid}</span></p>
+                                    <p class="text-slate-400">Seguridad: <span class="font-bold text-slate-800">${type}</span></p>
+                                </div>
+                                <button class="w-full py-2 bg-amber-500 text-white font-bold text-xs rounded-xl shadow-sm">
+                                    Conectarse Ahora
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            // Update QR Styling Engine
+            const dotsColor = document.getElementById('qr-color-dots').value;
+            const bgColor = document.getElementById('qr-color-bg').value;
+            const dotsStyle = document.getElementById('qr-style-dots').value;
+            const eyesStyle = document.getElementById('qr-style-eyes').value;
+
+            document.getElementById('qr-color-dots-val').innerText = dotsColor;
+            document.getElementById('qr-color-bg-val').innerText = bgColor;
+
+            qrCodeStyling.update({
+                data: qrData,
+                dotsOptions: { color: dotsColor, type: dotsStyle },
+                backgroundOptions: { color: bgColor },
+                cornersSquareOptions: { type: eyesStyle },
+                image: logoObjectUrl || undefined
+            });
+        }
+
+        // Simulated Audio Controls Logic
+        function initAudioEventListeners() {
+            audioPlayer = document.getElementById('sim-audio-player');
+            const seekSlider = document.getElementById('audio-seek');
+            const timeCurr = document.getElementById('audio-time-curr');
+            const timeDur = document.getElementById('audio-time-dur');
+
+            if (audioPlayer) {
+                audioPlayer.addEventListener('loadedmetadata', () => {
+                    timeDur.innerText = formatTime(audioPlayer.duration);
+                });
+                audioPlayer.addEventListener('timeupdate', () => {
+                    if (audioPlayer.duration) {
+                        const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                        seekSlider.value = pct;
+                        timeCurr.innerText = formatTime(audioPlayer.currentTime);
+                    }
+                });
+                seekSlider.addEventListener('input', (e) => {
+                    if (audioPlayer.duration) {
+                        audioPlayer.currentTime = (e.target.value / 100) * audioPlayer.duration;
+                    }
+                });
+            }
+        }
+
+        function toggleAudioPlay() {
+            if (!audioPlayer) return;
+            const btn = document.getElementById('btn-play-pause');
+            if (isPlaying) {
+                audioPlayer.pause();
+                btn.innerHTML = '<i class="fa-solid fa-play ml-0.5"></i>';
+                isPlaying = false;
+            } else {
+                audioPlayer.play();
+                btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                isPlaying = true;
+            }
+        }
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        // QR Download Action
+        function downloadQR(format) {
+            qrCodeStyling.download({ name: "QREterno_Codigo", extension: format });
+            showToast(`Descargando código QR en formato .${format.toUpperCase()}`, "success");
+        }
+
+        // Dashboard Functionality
+        function saveCurrentQRToDashboard() {
+            const newId = `qr_${Math.random().toString(36).substr(2, 5)}`;
+            let title = "Código Personalizado";
+            if (selectedType === 'music') title = document.getElementById('music-title').value;
+            if (selectedType === 'url') title = document.getElementById('url-title').value;
+
+            qrDatabase.push({
+                id: newId,
+                type: selectedType,
+                title: title,
+                target: 'https://tudominio.com/r.php?c=' + newId,
+                scans: 0
+            });
+
+            renderDashboardTable();
+            showToast("Guardado con éxito en el Panel Dinámico", "success");
+            switchTab('dashboard');
+        }
+
+        function renderDashboardTable() {
+            const tbody = document.getElementById('dashboard-table-body');
+            tbody.innerHTML = "";
+
+            let totalScans = 0;
+
+            qrDatabase.forEach(item => {
+                totalScans += item.scans;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                tr.innerHTML = `
+                    <td class="p-4 font-mono font-bold text-blue-600 text-xs">${item.id}</td>
+                    <td class="p-4">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                            ${item.type}
+                        </span>
+                    </td>
+                    <td class="p-4 font-bold text-slate-800">${item.title}</td>
+                    <td class="p-4 font-mono text-xs text-slate-500 max-w-xs truncate">${item.target}</td>
+                    <td class="p-4 text-center font-bold text-slate-700">${item.scans}</td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="simulateScan('${item.id}')" class="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-qrcode mr-1"></i>Escanear
+                        </button>
+                        <button onclick="editTarget('${item.id}')" class="px-2.5 py-1 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-pen mr-1"></i>Editar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('stat-total-qrs').innerText = qrDatabase.length;
+            document.getElementById('stat-total-scans').innerText = totalScans;
+        }
+
+        function simulateScan(id) {
+            const item = qrDatabase.find(q => q.id === id);
+            if (item) {
+                item.scans++;
+                renderDashboardTable();
+                showToast(`Escaneo simulado para ${id}. Conteo actual: ${item.scans}`, "info");
+            }
+        }
+
+        function editTarget(id) {
+            const item = qrDatabase.find(q => q.id === id);
+            if (item) {
+                const newTarget = prompt("Introduce la nueva URL de destino dinámico:", item.target);
+                if (newTarget) {
+                    item.target = newTarget;
+                    renderDashboardTable();
+                    showToast(`Destino de ${id} actualizado en vivo.`, "success");
+                }
+            }
+        }
+
+        // Navigation Tabs Switcher
+        function switchTab(tab) {
+            ['wizard', 'dashboard', 'export'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = 'px-4 py-2 rounded-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900';
+            });
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).className = 'px-4 py-2 rounded-lg transition-all flex items-center space-x-2 bg-white text-blue-600 shadow-sm';
+        }
+
+        // Dynamic Event Listeners for Live Inputs
+        document.querySelectorAll('input, select, textarea').forEach(elem => {
+            if (elem.id !== 'music-file-input' && elem.id !== 'music-cover-input' && elem.id !== 'qr-logo-input') {
+                elem.addEventListener('input', updatePreview);
+            }
+        });
+
+        // Copy Code Helper
+        function copyCode(elementId) {
+            const codeText = document.getElementById(elementId).innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = codeText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("Código copiado al portapapeles", "success");
+        }
+
+        // Toast Notification System
+        function showToast(msg, type = "info") {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const message = document.getElementById('toast-message');
+
+            message.innerText = msg;
+            if (type === 'success') {
+                icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            } else {
+                icon.className = "fa-solid fa-circle-info text-blue-400 text-lg";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
